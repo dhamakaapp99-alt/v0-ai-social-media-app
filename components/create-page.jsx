@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, Loader2, ImageIcon, X, Send, Wand2 } from "lucide-react"
+import { Sparkles, Loader2, X, Send, Wand2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CreatePage() {
@@ -164,9 +164,9 @@ export default function CreatePage() {
         <Card className="border-0 shadow-lg overflow-hidden animate-fade-in">
           <CardContent className="p-0">
             <div className="relative">
-              <ImageIcon
+              <img
                 src={generatedImage || "/placeholder.svg"}
-                alt="Generated"
+                alt="Generated AI Image"
                 className="w-full aspect-square object-cover"
               />
               <button
