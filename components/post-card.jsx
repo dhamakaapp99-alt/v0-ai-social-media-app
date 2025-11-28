@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Heart, MessageCircle, Share2, Send, MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
+import Link from "next/link"
 
 export default function PostCard({ post, currentUserId, onUpdate }) {
   const [isLiked, setIsLiked] = useState(post.likes?.includes(currentUserId))
@@ -24,7 +25,6 @@ export default function PostCard({ post, currentUserId, onUpdate }) {
     try {
       await fetch(`/api/posts/${post._id}/like`, { method: "POST" })
     } catch (error) {
-      // Revert on error
       setIsLiked(isLiked)
       setLikesCount((prev) => (isLiked ? prev + 1 : prev - 1))
     }
@@ -59,14 +59,18 @@ export default function PostCard({ post, currentUserId, onUpdate }) {
   return (
     <Card className="border-0 shadow-lg overflow-hidden animate-fade-in">
       <CardHeader className="flex flex-row items-center gap-3 pb-2">
-        <Avatar className="h-10 w-10 border-2 border-primary/20">
-          <AvatarImage src={post.user?.avatar || "/placeholder.svg"} alt={post.user?.name} />
-          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-            {post.user?.name?.charAt(0)?.toUpperCase() || "?"}
-          </AvatarFallback>
-        </Avatar>
+        <Link href={`/user/${post.userId}`}>
+          <Avatar className="h-10 w-10 border-2 border-primary/20 cursor-pointer hover:border-primary transition-colors">
+            <AvatarImage src={post.user?.avatar || "/placeholder.svg"} alt={post.user?.name} />
+            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+              {post.user?.name?.charAt(0)?.toUpperCase() || "?"}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1">
-          <p className="font-semibold text-sm">{post.user?.name || "Anonymous"}</p>
+          <Link href={`/user/${post.userId}`} className="hover:underline">
+            <p className="font-semibold text-sm">{post.user?.name || "Anonymous"}</p>
+          </Link>
           <p className="text-xs text-muted-foreground">{timeAgo}</p>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -126,7 +130,6 @@ export default function PostCard({ post, currentUserId, onUpdate }) {
           </button>
         </div>
 
-        {/* Comments Section */}
         {showComments && (
           <div className="w-full pt-2 space-y-3">
             {comments.slice(-3).map((c, i) => (
