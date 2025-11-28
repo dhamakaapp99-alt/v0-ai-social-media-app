@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import OpenAI from "openai"
+import { uploadImageFromUrl } from "@/lib/cloudinary"
 
 function getOpenAI() {
   return new OpenAI({
@@ -34,11 +35,23 @@ export async function POST(request) {
       quality: "standard",
     })
 
-    const imageUrl = response.data[0].url
+    const tempImageUrl = response.data[0].url
+
+    let finalImageUrl = tempImageUrl
+
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+      const uploadResult = await uploadImageFromUrl(tempImageUrl, "colorcode/posts")
+
+      if (uploadResult.success) {
+        finalImageUrl = uploadResult.url
+      } else {
+        console.error("Cloudinary upload failed, using temp URL:", uploadResult.error)
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      imageUrl,
+      imageUrl: finalImageUrl,
       revisedPrompt: response.data[0].revised_prompt,
     })
   } catch (error) {
