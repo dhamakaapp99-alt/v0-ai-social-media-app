@@ -256,18 +256,6 @@ async function GET(request) {
         const query = {};
         if (userId) {
             query.userId = new __TURBOPACK__imported__module__$5b$externals$5d2f$mongodb__$5b$external$5d$__$28$mongodb$2c$__cjs$29$__["ObjectId"](userId);
-        } else if (session) {
-            // Get posts from user and their friends
-            const currentUser = await db.collection("users").findOne({
-                _id: new __TURBOPACK__imported__module__$5b$externals$5d2f$mongodb__$5b$external$5d$__$28$mongodb$2c$__cjs$29$__["ObjectId"](session.userId)
-            });
-            const friendIds = currentUser?.friends?.map((id)=>new __TURBOPACK__imported__module__$5b$externals$5d2f$mongodb__$5b$external$5d$__$28$mongodb$2c$__cjs$29$__["ObjectId"](id)) || [];
-            query.userId = {
-                $in: [
-                    new __TURBOPACK__imported__module__$5b$externals$5d2f$mongodb__$5b$external$5d$__$28$mongodb$2c$__cjs$29$__["ObjectId"](session.userId),
-                    ...friendIds
-                ]
-            };
         }
         const posts = await db.collection("posts").aggregate([
             {

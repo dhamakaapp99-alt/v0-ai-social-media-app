@@ -1,8 +1,10 @@
 var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/ai/generate-image/route.js")
 R.c("server/chunks/node_modules_next_dae83cbc._.js")
 R.c("server/chunks/node_modules_openai_f417a314._.js")
-R.c("server/chunks/node_modules_b2d49e69._.js")
-R.c("server/chunks/[root-of-the-server]__60ae13b9._.js")
+R.c("server/chunks/node_modules_lodash_9f355569._.js")
+R.c("server/chunks/node_modules_cloudinary_0ecd8ca6._.js")
+R.c("server/chunks/node_modules_e573108d._.js")
+R.c("server/chunks/[root-of-the-server]__df441ec2._.js")
 R.c("server/chunks/_next-internal_server_app_api_ai_generate-image_route_actions_c85feafc.js")
 R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/ai/generate-image/route.js [app-route] (ecmascript)\" } [app-route] (ecmascript)")
 module.exports=R.m("[project]/node_modules/next/dist/esm/build/templates/app-route.js { INNER_APP_ROUTE => \"[project]/app/api/ai/generate-image/route.js [app-route] (ecmascript)\" } [app-route] (ecmascript)").exports
