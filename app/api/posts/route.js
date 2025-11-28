@@ -65,11 +65,6 @@ export async function GET(request) {
 
     if (userId) {
       query.userId = new ObjectId(userId)
-    } else if (session) {
-      // Get posts from user and their friends
-      const currentUser = await db.collection("users").findOne({ _id: new ObjectId(session.userId) })
-      const friendIds = currentUser?.friends?.map((id) => new ObjectId(id)) || []
-      query.userId = { $in: [new ObjectId(session.userId), ...friendIds] }
     }
 
     const posts = await db
