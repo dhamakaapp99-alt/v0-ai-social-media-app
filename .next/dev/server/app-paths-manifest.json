@@ -1,0 +1,12 @@
+{
+  "/(app)/create/page": "app/(app)/create/page.js",
+  "/(app)/feed/page": "app/(app)/feed/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/ai/generate-image/route": "app/api/ai/generate-image/route.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/posts/route": "app/api/posts/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/signup/page": "app/signup/page.js"
+}
