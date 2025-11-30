@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, Loader2, X, Send, Wand2 } from "lucide-react"
+import { Sparkles, Loader2, X, Send, Wand2, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function CreatePage() {
@@ -18,6 +18,7 @@ export default function CreatePage() {
   const [tags, setTags] = useState("")
   const [generatedImage, setGeneratedImage] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
   const [isPosting, setIsPosting] = useState(false)
 
   const handleGenerate = async () => {
@@ -31,6 +32,7 @@ export default function CreatePage() {
     }
 
     setIsGenerating(true)
+    setGeneratedImage("") // Clear previous image
     try {
       const res = await fetch("/api/ai/generate-image", {
         method: "POST",
@@ -42,6 +44,7 @@ export default function CreatePage() {
 
       if (data.success && data.imageUrl) {
         setGeneratedImage(data.imageUrl)
+        setSelectedFile(null) // Clear selected file on successful generation
         toast({
           title: "Image created!",
           description: "Your AI image is ready to post",
@@ -117,6 +120,21 @@ export default function CreatePage() {
     }
   }
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setSelectedFile(ev.target?.result)
+        setGeneratedImage("") // Clear generated image if a file is selected
+        toast({
+          title: "Image Selected",
+        })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   return (
     <div className="p-4 space-y-4">
       <Card className="border-0 shadow-lg">
@@ -139,9 +157,36 @@ export default function CreatePage() {
             <p className="text-xs text-muted-foreground">Type in Hindi or English - AI will understand!</p>
           </div>
 
+          {/* Image Upload Section */}
+          <div className="space-y-3">
+            <Label>Or add a reference image (optional)</Label>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => document.getElementById("gallery-input")?.click()}
+              >
+                <Upload className="h-4 w-4" />
+                Upload from Gallery
+              </Button>
+              {selectedFile && (
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                  <img src={selectedFile} alt="Selected preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => setSelectedFile(null)}
+                    className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <input type="file" id="gallery-input" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
+            disabled={isGenerating || (!prompt.trim() && !selectedFile)}
             className="w-full h-12 gap-2 text-base font-semibold"
           >
             {isGenerating ? (
