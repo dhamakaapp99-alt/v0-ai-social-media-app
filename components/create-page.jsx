@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sparkles, Loader2, X, Send, Wand2, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
+
 export default function CreatePage() {
   const router = useRouter()
   const { toast } = useToast()
