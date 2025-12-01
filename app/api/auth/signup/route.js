@@ -7,41 +7,56 @@ export async function POST(request) {
   try {
     const { email, mobile, password, name } = await request.json()
 
+    // At least one required
     if (!password || (!email && !mobile)) {
-      return NextResponse.json({ success: false, error: "Email/mobile and password are required" }, { status: 400 })
-    }
-
-    let db
-    try {
-      db = await getDb()
-    } catch (dbError) {
-      console.error("[v0] Database connection error:", dbError.message)
       return NextResponse.json(
-        {
-          success: false,
-          error: "Database not configured. Please add MONGODB_URI to environment variables.",
-        },
-        { status: 503 },
+        { success: false, error: "Email or mobile and password required" },
+        { status: 400 }
       )
     }
 
+    const db = await getDb()
     const users = db.collection("users")
 
-    // Check if user exists
-    const existingUser = await users.findOne({
-      $or: [{ email: email?.toLowerCase() }, { mobile }].filter(Boolean),
-    })
+    // -----------------------------
+    // 🔥 EMAIL UNIQUE CHECK
+    // -----------------------------
+    if (email) {
+      const emailExists = await users.findOne({
+        email: email.toLowerCase(),
+      })
 
-    if (existingUser) {
-      return NextResponse.json({ success: false, error: "User already exists" }, { status: 400 })
+      if (emailExists) {
+        return NextResponse.json(
+          { success: false, error: "Email already registered" },
+          { status: 400 }
+        )
+      }
     }
 
+    // -----------------------------
+    // 🔥 MOBILE UNIQUE CHECK
+    // -----------------------------
+    if (mobile) {
+      const mobileExists = await users.findOne({ mobile })
+
+      if (mobileExists) {
+        return NextResponse.json(
+          { success: false, error: "Mobile already registered" },
+          { status: 400 }
+        )
+      }
+    }
+
+    // -----------------------------
+    // 🔥 CREATE USER
+    // -----------------------------
     const hashedPassword = await hashPassword(password)
 
     const newUser = {
       _id: new ObjectId(),
-      email: email?.toLowerCase(),
-      mobile,
+      email: email?.toLowerCase() || "",
+      mobile: mobile || "",
       password: hashedPassword,
       name: name || "",
       bio: "",
@@ -58,6 +73,8 @@ export async function POST(request) {
     }
 
     await users.insertOne(newUser)
+
+    // Session will work with email or mobile
     await setSession(newUser._id.toString(), email || mobile)
 
     const { password: _, ...userWithoutPassword } = newUser
@@ -66,14 +83,11 @@ export async function POST(request) {
       success: true,
       user: { ...userWithoutPassword, _id: newUser._id.toString() },
     })
+
   } catch (error) {
-    console.error("[v0] Signup error:", error.message)
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Internal server error",
-      },
-      { status: 500 },
+      { success: false, error: error.message || "Internal server error" },
+      { status: 500 }
     )
   }
 }
