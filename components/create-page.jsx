@@ -67,6 +67,7 @@ export default function CreatePage() {
       setIsGenerating(false)
     }
   }
+  
 
   const handlePost = async () => {
     if (!generatedImage) {
