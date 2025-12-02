@@ -15,17 +15,24 @@ export async function POST(request) {
     }
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
     const enhancedPrompt = `Photorealistic, HD, cinematic lighting, sharp details: ${prompt}`;
 
-    // CORRECT GOOGLE IMAGE MODEL
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagetext:generate?key=${GEMINI_API_KEY}`;
+    // ✅ FIX 1: Use the correct Imagen Model URL
+    // Text models (Gemini Flash) cannot generate images. You must use Imagen.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${GEMINI_API_KEY}`;
 
+    // ✅ FIX 2: Update Payload Structure for Imagen
     const geminiRes = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt: enhancedPrompt,
+        instances: [
+          { prompt: enhancedPrompt }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1" // Optional: "16:9", "4:3", etc.
+        }
       }),
     });
 
@@ -36,22 +43,18 @@ export async function POST(request) {
       data = JSON.parse(raw);
     } catch (err) {
       console.error("Gemini RAW Response:", raw);
-      return NextResponse.json({
-        success: false,
-        error: "Gemini returned non-JSON data",
-      });
+      return NextResponse.json({ success: false, error: "Gemini returned non-JSON data" });
     }
 
-    // Validate base64 image
-    if (!data?.images || !data.images[0]?.image) {
-      console.error("Gemini Error:", data);
-      return NextResponse.json({
-        success: false,
-        error: "Gemini did not generate image",
-      });
+    // ✅ FIX 3: Parse the correct response structure
+    // Imagen returns { predictions: [ { bytesBase64Encoded: "..." } ] }
+    if (!data?.predictions?.[0]?.bytesBase64Encoded) {
+      console.error("Gemini Error Response:", data);
+      return NextResponse.json({ success: false, error: "Gemini did not generate image" });
     }
 
-    const base64Image = `data:image/png;base64,${data.images[0].image}`;
+    // Extract Base64 image
+    const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
 
     // --- Upload to Cloudinary ---
     let finalUrl = base64Image;
@@ -66,6 +69,7 @@ export async function POST(request) {
       imageUrl: finalUrl,
       revisedPrompt: enhancedPrompt,
     });
+
   } catch (error) {
     console.error("Backend Error:", error);
     return NextResponse.json(

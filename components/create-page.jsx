@@ -35,7 +35,7 @@ export default function CreatePage() {
     setIsGenerating(true)
     setGeneratedImage("") // Clear previous image
     try {
-      const res = await fetch("/api/ai/generate-image", {
+      const res = await fetch("https://n8n.limbutech.in/webhook/b4431b33-9795-48f0-a4a7-7ee881b8233f", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
