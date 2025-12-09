@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, Loader2, X, Send, Wand2, Upload } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Sparkles, Loader2, X, Send, Droplets, Upload, Wrench } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 
@@ -15,37 +15,47 @@ export default function CreatePage() {
   const router = useRouter()
   const { toast } = useToast()
   const [prompt, setPrompt] = useState("")
+  const [topic, setTopic] = useState("Ladies Saadi")
   const [caption, setCaption] = useState("")
   const [tags, setTags] = useState("")
-  const [generatedImage, setGeneratedImage] = useState("")
+  const [imageSrc, setImageSrc] = useState("") // Consolidated state for generated or uploaded image
   const [isGenerating, setIsGenerating] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
   const [isPosting, setIsPosting] = useState(false)
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
+    if (!topic.trim()) {
       toast({
-        title: "Please enter a prompt",
-        description: "Describe what you want to create",
+        title: "Please enter a topic",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!imageSrc || !imageSrc.startsWith("data:image")) {
+      toast({
+        title: "Please upload a character image",
+        description: "A reference image is required to generate a diagnosis.",
         variant: "destructive",
       })
       return
     }
 
     setIsGenerating(true)
-    setGeneratedImage("") // Clear previous image
     try {
+      const body = {
+        topic: topic,
+        character: imageSrc, // Send uploaded image as base64 data URL
+      }
+
       const res = await fetch("https://n8n.limbutech.in/webhook/b4431b33-9795-48f0-a4a7-7ee881b8233f", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify(body),
       })
 
       const data = await res.json()
 
       if (data.success && data.imageUrl) {
-        setGeneratedImage(data.imageUrl)
-        setSelectedFile(null) // Clear selected file on successful generation
+        setImageSrc(data.url)
         toast({
           title: "Image created!",
           description: "Your AI image is ready to post",
@@ -70,7 +80,7 @@ export default function CreatePage() {
   
 
   const handlePost = async () => {
-    if (!generatedImage) {
+    if (!imageSrc) {
       toast({
         title: "No image",
         description: "Generate an image first",
@@ -90,7 +100,7 @@ export default function CreatePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageUrl: generatedImage,
+          imageUrl: imageSrc,
           caption,
           tags: tagsArray,
         }),
@@ -127,8 +137,7 @@ export default function CreatePage() {
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader()
       reader.onload = (ev) => {
-        setSelectedFile(ev.target?.result)
-        setGeneratedImage("") // Clear generated image if a file is selected
+        setImageSrc(ev.target?.result) // Set uploaded image for preview
         toast({
           title: "Image Selected",
         })
@@ -140,28 +149,44 @@ export default function CreatePage() {
   return (
     <div className="p-4 space-y-4">
       <Card className="border-0 shadow-lg">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wand2 className="h-5 w-5 text-primary" />
-            AI Image Generator
+        <CardHeader className="pb-4 text-center">
+           <img
+            src={imageSrc || "/character-placeholder.png"}
+            alt="colorCode Character"
+            className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-primary/20 mb-2"
+          />
+          <CardTitle className="flex items-center justify-center gap-2 text-xl">
+            <Sparkles className="h-6 w-6 text-primary" />
+            colorCode
           </CardTitle>
+          <CardDescription>Describe your idea. Our AI will bring it to life.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="topic">Topic</Label>
+            <Input
+              id="topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., Ladies Saadi"
+              className="h-12"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="prompt">Describe your image</Label>
             <Textarea
               id="prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ek ladka sunset ke samay beach pe khada hai... / A boy standing near the beach at sunset..."
+              placeholder="e.g., Water is leaking from the filter... / फिल्टर से पानी लीक हो रहा है..."
               className="min-h-24 resize-none"
             />
-            <p className="text-xs text-muted-foreground">Type in Hindi or English - AI will understand!</p>
           </div>
 
           {/* Image Upload Section */}
           <div className="space-y-3">
-            <Label>Or add a reference image (optional)</Label>
+            <Label>Add a character image (required)</Label>
             <div className="flex items-center gap-4">
               <Button
                 variant="outline"
@@ -171,11 +196,11 @@ export default function CreatePage() {
                 <Upload className="h-4 w-4" />
                 Upload from Gallery
               </Button>
-              {selectedFile && (
+              {imageSrc && imageSrc.startsWith("data:image") && (
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                  <img src={selectedFile} alt="Selected preview" className="w-full h-full object-cover" />
+                  <img src={imageSrc} alt="Selected preview" className="w-full h-full object-cover" />
                   <button
-                    onClick={() => setSelectedFile(null)}
+                    onClick={() => setImageSrc("")}
                     className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
                   >
                     <X className="h-3 w-3" />
@@ -188,7 +213,7 @@ export default function CreatePage() {
 
           <Button
             onClick={handleGenerate}
-            disabled={isGenerating || (!prompt.trim() && !selectedFile)}
+            disabled={isGenerating}
             className="w-full h-12 gap-2 text-base font-semibold"
           >
             {isGenerating ? (
@@ -207,17 +232,17 @@ export default function CreatePage() {
       </Card>
 
       {/* Generated Image Preview */}
-      {generatedImage && (
+      {imageSrc && (
         <Card className="border-0 shadow-lg overflow-hidden animate-fade-in">
           <CardContent className="p-0">
             <div className="relative">
               <img
-                src={generatedImage || "/placeholder.svg"}
+                src={imageSrc || "/placeholder.svg"}
                 alt="Generated AI Image"
                 className="w-full aspect-square object-cover"
               />
               <button
-                onClick={() => setGeneratedImage("")}
+                onClick={() => setImageSrc("")}
                 className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
               >
                 <X className="h-4 w-4" />
