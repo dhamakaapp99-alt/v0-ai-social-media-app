@@ -1,80 +1,85 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { uploadImageFromUrl } from "@/lib/cloudinary";
+import { v2 as cloudinary } from 'cloudinary';
 
-export async function POST(request) {
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export async function POST(req) {
+  let newPayload = {};
+
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+    // 1. Body parse karein
+    const body = await req.json();
+    const { topic, character } = body;
 
-    const { prompt } = await request.json();
-    if (!prompt) {
-      return NextResponse.json({ success: false, error: "Prompt is required" }, { status: 400 });
-    }
-
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    const enhancedPrompt = `Photorealistic, HD, cinematic lighting, sharp details: ${prompt}`;
-
-    // ✅ FIX 1: Use the correct Imagen Model URL
-    // Text models (Gemini Flash) cannot generate images. You must use Imagen.
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${GEMINI_API_KEY}`;
-
-    // ✅ FIX 2: Update Payload Structure for Imagen
-    const geminiRes = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        instances: [
-          { prompt: enhancedPrompt }
-        ],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: "1:1" // Optional: "16:9", "4:3", etc.
+    // Validation
+    if (!topic || !character) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "topic and character (image) are required",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
         }
-      }),
-    });
-
-    const raw = await geminiRes.text();
-
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (err) {
-      console.error("Gemini RAW Response:", raw);
-      return NextResponse.json({ success: false, error: "Gemini returned non-JSON data" });
+      );
     }
 
-    // ✅ FIX 3: Parse the correct response structure
-    // Imagen returns { predictions: [ { bytesBase64Encoded: "..." } ] }
-    if (!data?.predictions?.[0]?.bytesBase64Encoded) {
-      console.error("Gemini Error Response:", data);
-      return NextResponse.json({ success: false, error: "Gemini did not generate image" });
+    let finalCharacterUrl = character;
+
+    // 2. Upload character image to Cloudinary
+    if (character) {
+      console.log("Uploading character image to Cloudinary...");
+
+      const uploadResult = await cloudinary.uploader.upload(character, {
+        folder: "ai_agent_characters",
+        resource_type: "image",
+      });
+
+      finalCharacterUrl = uploadResult.secure_url;
+
+      console.log("Character uploaded successfully. URL:", finalCharacterUrl);
     }
 
-    // Extract Base64 image
-    const base64Image = `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
+    // 3. Payload for n8n
+    newPayload = {
+      topic,
+      character: finalCharacterUrl,
+    };
 
-    // --- Upload to Cloudinary ---
-    let finalUrl = base64Image;
+    // 4. Send to webhook
+    const response = await fetch(
+      "https://n8n.limbutech.in/webhook/b4431b33-9795-48f0-a4a7-7ee881b8233f",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newPayload),
+      }
+    );
 
-    if (process.env.CLOUDINARY_CLOUD_NAME) {
-      const upload = await uploadImageFromUrl(base64Image, "colorcode/posts");
-      if (upload.success) finalUrl = upload.url;
-    }
+    const data = await response.json();
 
-    return NextResponse.json({
-      success: true,
-      imageUrl: finalUrl,
-      revisedPrompt: enhancedPrompt,
+    // 5. Return response
+    return new Response(JSON.stringify({ success: true, data }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
 
   } catch (error) {
-    console.error("Backend Error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Error generating image" },
-      { status: 500 }
+    console.error("Error in aiAgent API:", error);
+
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 }

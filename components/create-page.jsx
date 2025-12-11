@@ -7,33 +7,34 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Sparkles, Loader2, X, Send, Droplets, Upload, Wrench } from "lucide-react"
+import { Sparkles, Loader2, X, Send, Upload, ImageIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
 
 export default function CreatePage() {
   const router = useRouter()
   const { toast } = useToast()
   const [prompt, setPrompt] = useState("")
-  const [topic, setTopic] = useState("Ladies Saadi")
+  const [topic, setTopic] = useState("")
   const [caption, setCaption] = useState("")
   const [tags, setTags] = useState("")
-  const [imageSrc, setImageSrc] = useState("") // Consolidated state for generated or uploaded image
+  const [imageSrc, setImageSrc] = useState("")
+  const [characterImage, setCharacterImage] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPosting, setIsPosting] = useState(false)
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
       toast({
-        title: "Please enter a topic",
+        title: "Topic Required",
+        description: "Please enter a topic",
         variant: "destructive",
       })
       return
     }
-    if (!imageSrc || !imageSrc.startsWith("data:image")) {
+    if (!characterImage) {
       toast({
-        title: "Please upload a character image",
-        description: "A reference image is required to generate a diagnosis.",
+        title: "Character Image Required",
+        description: "Please upload a character image",
         variant: "destructive",
       })
       return
@@ -43,10 +44,11 @@ export default function CreatePage() {
     try {
       const body = {
         topic: topic,
-        character: imageSrc, // Send uploaded image as base64 data URL
+        prompt: prompt || topic,
+        character: characterImage,
       }
 
-      const res = await fetch("https://n8n.limbutech.in/webhook/b4431b33-9795-48f0-a4a7-7ee881b8233f", {
+      const res = await fetch("/api/ai/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -54,15 +56,15 @@ export default function CreatePage() {
 
       const data = await res.json()
 
-      if (data.success && data.imageUrl) {
-        setImageSrc(data.url)
+      if (data.success && data.data?.url) {
+        setImageSrc(data.data.url)
         toast({
-          title: "Image created!",
-          description: "Your AI image is ready to post",
+          title: "✨ Image Generated!",
+          description: "Your AI creation is ready",
         })
       } else {
         toast({
-          title: "Generation failed",
+          title: "Generation Failed",
           description: data.error || "Please try again",
           variant: "destructive",
         })
@@ -77,12 +79,11 @@ export default function CreatePage() {
       setIsGenerating(false)
     }
   }
-  
 
   const handlePost = async () => {
     if (!imageSrc) {
       toast({
-        title: "No image",
+        title: "No Image",
         description: "Generate an image first",
         variant: "destructive",
       })
@@ -110,13 +111,13 @@ export default function CreatePage() {
 
       if (data.success) {
         toast({
-          title: "Posted!",
+          title: "🎉 Posted!",
           description: "Your creation is now live",
         })
         router.push("/feed")
       } else {
         toast({
-          title: "Failed to post",
+          title: "Failed to Post",
           description: data.error,
           variant: "destructive",
         })
@@ -137,182 +138,340 @@ export default function CreatePage() {
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader()
       reader.onload = (ev) => {
-        setImageSrc(ev.target?.result) // Set uploaded image for preview
+        setCharacterImage(ev.target?.result)
         toast({
-          title: "Image Selected",
+          title: "✓ Character Image Selected",
         })
       }
       reader.readAsDataURL(file)
     }
   }
 
+  const removeCharacterImage = () => {
+    setCharacterImage("")
+    const input = document.getElementById("gallery-input")
+    if (input) input.value = ""
+  }
+
   return (
-    <div className="p-4 space-y-4">
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="pb-4 text-center">
-           <img
-            src={imageSrc || "/character-placeholder.png"}
-            alt="colorCode Character"
-            className="w-24 h-24 mx-auto rounded-full object-cover border-4 border-primary/20 mb-2"
-          />
-          <CardTitle className="flex items-center justify-center gap-2 text-xl">
-            <Sparkles className="h-6 w-6 text-primary" />
-            colorCode
-          </CardTitle>
-          <CardDescription>Describe your idea. Our AI will bring it to life.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="topic">Topic</Label>
-            <Input
-              id="topic"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Ladies Saadi"
-              className="h-12"
-            />
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-orange-50 p-4">
+      {/* Generating Popup Modal */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+          <div className="bg-white rounded-3xl p-8 max-w-sm mx-4 text-center shadow-2xl animate-scale-in">
+            <div className="mb-6">
+              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center animate-pulse-scale">
+                <Sparkles className="h-12 w-12 text-white animate-spin-slow" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+              Generating Image
+            </h3>
+            <p className="text-lg text-gray-600 mb-2">
+              कृपया प्रतीक्षा करें...
+            </p>
+            <p className="text-base text-gray-500">
+              Please wait, creating magic ✨
+            </p>
+            <div className="mt-6 flex gap-2 justify-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-3 h-3 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           </div>
+        </div>
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="prompt">Describe your image</Label>
-            <Textarea
-              id="prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g., Water is leaking from the filter... / फिल्टर से पानी लीक हो रहा है..."
-              className="min-h-24 resize-none"
-            />
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center pt-8 pb-4 animate-fade-in">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <Sparkles className="h-8 w-8 text-red-600 animate-pulse" />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+              colorCode
+            </h1>
           </div>
+          <p className="text-gray-600 text-lg">Create stunning AI images with your character</p>
+        </div>
 
-          {/* Image Upload Section */}
-          <div className="space-y-3">
-            <Label>Add a character image (required)</Label>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => document.getElementById("gallery-input")?.click()}
-              >
-                <Upload className="h-4 w-4" />
-                Upload from Gallery
-              </Button>
-              {imageSrc && imageSrc.startsWith("data:image") && (
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
-                  <img src={imageSrc} alt="Selected preview" className="w-full h-full object-cover" />
+        {/* Main Form Card */}
+        <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-sm animate-slide-up">
+          <CardContent className="p-6 space-y-6">
+            {/* Topic Input */}
+            <div className="space-y-2">
+              <Label htmlFor="topic" className="text-base font-semibold flex items-center gap-2">
+                <span className="text-red-600">✦</span> Topic
+              </Label>
+              <Input
+                id="topic"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g., Ladies Saadi, Fashion, Nature..."
+                className="h-12 text-base border-2 focus:border-red-400 transition-all"
+              />
+            </div>
+
+            {/* Optional Prompt */}
+            <div className="space-y-2">
+              <Label htmlFor="prompt" className="text-base font-semibold flex items-center gap-2">
+                <span className="text-pink-600">✦</span> Description (Optional)
+              </Label>
+              <Textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Add more details about your image..."
+                className="min-h-24 resize-none text-base border-2 focus:border-pink-400 transition-all"
+              />
+            </div>
+
+            {/* Character Image Upload */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <span className="text-red-600">✦</span> Character Image
+                <span className="text-xs text-red-500 font-normal">(Required)</span>
+              </Label>
+              
+              {!characterImage ? (
+                <div 
+                  onClick={() => document.getElementById("gallery-input")?.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-red-400 hover:bg-red-50/50 transition-all group"
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Upload className="h-8 w-8 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700">Click to upload character image</p>
+                      <p className="text-sm text-gray-500 mt-1">PNG, JPG up to 10MB</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden border-2 border-red-200 animate-scale-in">
+                  <img 
+                    src={characterImage} 
+                    alt="Character" 
+                    className="w-full h-64 object-cover"
+                  />
                   <button
-                    onClick={() => setImageSrc("")}
-                    className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                    onClick={removeCharacterImage}
+                    className="absolute top-3 right-3 p-2 bg-red-500 rounded-full text-white hover:bg-red-600 transition-all hover:scale-110 shadow-lg"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-5 w-5" />
                   </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                    <p className="text-white font-semibold flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Character Ready
+                    </p>
+                  </div>
                 </div>
               )}
-            </div>
-            <input type="file" id="gallery-input" accept="image/*" className="hidden" onChange={handleFileChange} />
-          </div>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="w-full h-12 gap-2 text-base font-semibold"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Creating Magic...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5" />
-                Generate Image
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Generated Image Preview */}
-      {imageSrc && (
-        <Card className="border-0 shadow-lg overflow-hidden animate-fade-in">
-          <CardContent className="p-0">
-            <div className="relative">
-              <img
-                src={imageSrc || "/placeholder.svg"}
-                alt="Generated AI Image"
-                className="w-full aspect-square object-cover"
+              <input 
+                type="file" 
+                id="gallery-input" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileChange} 
               />
-              <button
-                onClick={() => setImageSrc("")}
-                className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
 
-            <div className="p-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="caption">Caption</Label>
-                <Textarea
-                  id="caption"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Write something about your creation..."
-                  className="min-h-20 resize-none"
+            {/* Generate Button */}
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating || !topic || !characterImage}
+              className="w-full h-14 gap-3 text-lg font-bold bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="animate-pulse">Creating Magic...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-6 w-6" />
+                  Generate Image
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Generated Image Preview & Post Section */}
+        {imageSrc && (
+          <Card className="border-0 shadow-2xl overflow-hidden bg-white/90 backdrop-blur-sm animate-scale-in">
+            <CardContent className="p-0">
+              {/* Generated Image */}
+              <div className="relative">
+                <img
+                  src={imageSrc}
+                  alt="Generated AI Image"
+                  className="w-full aspect-square object-cover"
                 />
+                <div className="absolute top-4 left-4 bg-green-500 text-white px-4 py-2 rounded-full font-semibold shadow-lg flex items-center gap-2 animate-bounce-in">
+                  <Sparkles className="h-4 w-4" />
+                  AI Generated
+                </div>
+                <button
+                  onClick={() => setImageSrc("")}
+                  className="absolute top-4 right-4 p-3 bg-black/60 rounded-full text-white hover:bg-black/80 transition-all hover:scale-110 shadow-lg"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags</Label>
-                <Input
-                  id="tags"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="art, sunset, beach (comma separated)"
-                />
-              </div>
+              {/* Post Details */}
+              <div className="p-6 space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="caption" className="text-base font-semibold">Caption</Label>
+                  <Textarea
+                    id="caption"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Write something amazing..."
+                    className="min-h-24 resize-none text-base border-2 focus:border-red-400"
+                  />
+                </div>
 
-              <Button onClick={handlePost} disabled={isPosting} className="w-full h-12 gap-2 text-base font-semibold">
-                {isPosting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Posting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-5 w-5" />
-                    Share to Feed
-                  </>
-                )}
-              </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="tags" className="text-base font-semibold">Tags</Label>
+                  <Input
+                    id="tags"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder="#art, #ai, #creative (comma separated)"
+                    className="h-12 text-base border-2 focus:border-red-400"
+                  />
+                </div>
+
+                <Button 
+                  onClick={handlePost} 
+                  disabled={isPosting} 
+                  className="w-full h-14 gap-3 text-lg font-bold bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                >
+                  {isPosting ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-6 w-6" />
+                      Share to Feed
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Example Prompts */}
+        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Try these ideas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "पारंपरिक भारतीय शादी",
+                "Traditional Indian Wedding",
+                "आधुनिक फैशन पोर्ट्रेट",
+                "Sunset Beach Scene",
+                "साड़ी में सुंदर महिला",
+                "Cyberpunk Style",
+              ].map((example, i) => (
+                <button
+                  key={i}
+                  onClick={() => setTopic(example)}
+                  className="text-sm bg-gradient-to-r from-red-100 to-pink-100 px-4 py-2 rounded-full hover:from-red-200 hover:to-pink-200 transition-all font-medium text-gray-700 hover:scale-105 shadow-sm"
+                >
+                  {example}
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      {/* Example Prompts */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Example prompts to try</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[
-              "A magical forest with glowing fireflies",
-              "Ek ladki jo stars me dekh rahi hai",
-              "Cyberpunk city at night with neon lights",
-              "Beautiful mountain landscape with sunset",
-            ].map((example, i) => (
-              <button
-                key={i}
-                onClick={() => setPrompt(example)}
-                className="text-xs bg-muted px-3 py-1.5 rounded-full hover:bg-muted/80 transition-colors text-left"
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slide-up {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes scale-in {
+          from { 
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to { 
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        @keyframes bounce-in {
+          0% { 
+            transform: scale(0);
+            opacity: 0;
+          }
+          50% { 
+            transform: scale(1.1);
+          }
+          100% { 
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+        @keyframes pulse-scale {
+          0%, 100% { 
+            transform: scale(1);
+          }
+          50% { 
+            transform: scale(1.1);
+          }
+        }
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+        .animate-slide-up {
+          animation: slide-up 0.6s ease-out;
+        }
+        .animate-scale-in {
+          animation: scale-in 0.4s ease-out;
+        }
+        .animate-bounce-in {
+          animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .animate-pulse-scale {
+          animation: pulse-scale 2s ease-in-out infinite;
+        }
+        .animate-spin-slow {
+          animation: spin-slow 3s linear infinite;
+        }
+      `}</style>
     </div>
   )
 }
