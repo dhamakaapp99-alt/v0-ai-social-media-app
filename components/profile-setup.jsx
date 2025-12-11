@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Camera, Loader2, Sparkles, X, MapPin } from "lucide-react"
+import { Camera, Loader2, X, MapPin } from "lucide-react"
 
 const INTEREST_OPTIONS = [
   "Photography",
@@ -33,9 +33,8 @@ const INTEREST_OPTIONS = [
 
 export default function ProfileSetup() {
   const router = useRouter()
-  const { user, updateProfile } = useAuth()
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false)
   const [error, setError] = useState("")
 
   const [formData, setFormData] = useState({
@@ -55,42 +54,23 @@ export default function ProfileSetup() {
     }))
   }
 
-  const generateAIAvatar = async () => {
-    setIsGeneratingAvatar(true)
-    try {
-      const response = await fetch("/api/ai/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: `Professional profile avatar portrait of a friendly person, digital art style, vibrant colors, clean background, modern social media profile picture`,
-        }),
-      })
-
-      const data = await response.json()
-      if (data.success && data.imageUrl) {
-        setFormData((prev) => ({ ...prev, avatar: data.imageUrl }))
-      } else {
-        setError("Failed to generate avatar")
-      }
-    } catch (err) {
-      setError("Failed to generate avatar")
-    } finally {
-      setIsGeneratingAvatar(false)
-    }
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
     try {
-      const result = await updateProfile(formData)
+      const response = await fetch("/api/user/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
 
-      if (result.success) {
+      if (response.ok) {
         router.push("/feed")
       } else {
-        setError(result.error || "Failed to update profile")
+        const data = await response.json()
+        setError(data.error || "Failed to update profile")
       }
     } catch (err) {
       setError("Something went wrong")
@@ -143,17 +123,6 @@ export default function ProfileSetup() {
                     }}
                   />
                 </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generateAIAvatar}
-                  disabled={isGeneratingAvatar}
-                  className="gap-2 bg-transparent"
-                >
-                  {isGeneratingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Generate AI Avatar
-                </Button>
               </div>
 
               {/* Name */}
